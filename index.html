@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hope's Life Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --header: #1e293b;
+      --primary: #6366f1;
+      --primary-lt: #eef2ff;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --health: #f97316;
+      --work: #3b82f6;
+      --growth: #10b981;
+      --finance: #eab308;
+      --relations: #ec4899;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: var(--header); color: #f8fafc;
+      height: 60px; padding: 0 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 200;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    }
+    .hd-brand { display: flex; align-items: center; gap: .75rem; }
+    .hd-brand .logo { font-size: 1.4rem; }
+    .hd-brand h1 { font-size: 1rem; font-weight: 700; letter-spacing: -.01em; }
+    .hd-brand p  { font-size: .7rem; color: #94a3b8; margin-top: 1px; }
+    .hd-right { display: flex; align-items: center; gap: 1rem; }
+    .hd-date { text-align: right; }
+    .hd-date strong { display: block; font-size: .85rem; }
+    .hd-date span { font-size: .7rem; color: #94a3b8; }
+    .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; }
+
+    /* ── Tab nav ── */
+    .tab-nav {
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 0 2rem; display: flex; gap: 0;
+      position: sticky; top: 60px; z-index: 199;
+    }
+    .tab-btn {
+      padding: .875rem 1.125rem; border: none; background: none; cursor: pointer;
+      font-size: .825rem; font-weight: 500; color: var(--muted);
+      border-bottom: 2.5px solid transparent; transition: color .15s, border-color .15s;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--primary); }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* ── Layout ── */
+    .container { max-width: 1300px; margin: 0 auto; padding: 1.5rem 2rem; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .three-col { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.25rem; }
+    .five-col { display: grid; grid-template-columns: repeat(5,1fr); gap: 1rem; margin-bottom: 1.5rem; }
+
+    /* ── Stat cards ── */
+    .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card {
+      background: var(--card); border-radius: 14px; padding: 1.1rem 1.25rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+      display: flex; align-items: center; gap: 1rem;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,.1); }
+    .stat-icon {
+      width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+    }
+    .si-tasks  { background: #eef2ff; }
+    .si-habits { background: #f0fdf4; }
+    .si-streak { background: #fff7ed; }
+    .si-prog   { background: #fdf4ff; }
+    .stat-val { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+    .stat-lbl { font-size: .72rem; color: var(--muted); font-weight: 500; margin-top: 3px; }
+    .stat-sub { font-size: .68rem; color: var(--success); margin-top: 2px; }
+
+    /* ── Section card ── */
+    .section-card { background: var(--card); border-radius: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.07); overflow: hidden; margin-bottom: 1.25rem; }
+    .sc-header { padding: .875rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .sc-title { font-size: .9rem; font-weight: 700; display: flex; align-items: center; gap: .4rem; }
+    .sc-badge { font-size: .7rem; color: var(--muted); }
+    .sc-body { padding: 1.1rem 1.25rem; }
+
+    /* ── Buttons ── */
+    .btn { padding: .45rem .9rem; border: none; border-radius: 8px; cursor: pointer; font-size: .8rem; font-weight: 600; transition: all .15s; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-sm { padding: .28rem .65rem; font-size: .72rem; }
+    .btn-ghost { background: #f1f5f9; color: var(--muted); }
+    .btn-ghost:hover { background: #e2e8f0; }
+
+    /* ── Add-task form ── */
+    .add-row { display: flex; gap: .5rem; margin-bottom: .9rem; }
+    .add-row input, .add-row select {
+      padding: .45rem .75rem; border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: .8rem; outline: none; transition: border-color .15s; background: #f8fafc;
+    }
+    .add-row input:focus, .add-row select:focus { border-color: var(--primary); background: #fff; }
+    .add-row input { flex: 1; }
+
+    /* ── Filter pills ── */
+    .pills { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: .85rem; }
+    .pill {
+      padding: .22rem .7rem; border-radius: 9999px; font-size: .72rem; font-weight: 600;
+      cursor: pointer; border: 1.5px solid transparent; transition: all .15s;
+      background: var(--bg); color: var(--muted); border-color: var(--border);
+    }
+    .pill:hover { border-color: var(--primary); color: var(--primary); }
+    .pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    /* ── Task list ── */
+    .task-list { display: flex; flex-direction: column; gap: .45rem; max-height: 420px; overflow-y: auto; }
+    .task-item {
+      display: flex; align-items: center; gap: .65rem;
+      padding: .7rem .85rem; border-radius: 10px; border: 1.5px solid var(--border);
+      transition: background .12s; cursor: default;
+    }
+    .task-item:hover { background: #f8fafc; }
+    .task-item.done { opacity: .45; }
+    .task-item.done .task-text { text-decoration: line-through; }
+    .check-circle {
+      width: 20px; height: 20px; border-radius: 50%; border: 2px solid #cbd5e1;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; cursor: pointer; transition: all .15s; font-size: .7rem; color: #fff;
+    }
+    .check-circle.on { background: var(--success); border-color: var(--success); }
+    .task-text { flex: 1; font-size: .825rem; }
+    .pri-badge { font-size: .65rem; padding: .15rem .55rem; border-radius: 9999px; font-weight: 700; flex-shrink: 0; }
+    .pri-high   { background: #fee2e2; color: #dc2626; }
+    .pri-medium { background: #fef3c7; color: #d97706; }
+    .pri-low    { background: #f0fdf4; color: #16a34a; }
+    .area-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .del-btn {
+      opacity: 0; background: none; border: none; cursor: pointer;
+      color: #94a3b8; font-size: .7rem; padding: .15rem .3rem; border-radius: 4px; transition: all .15s;
+    }
+    .task-item:hover .del-btn { opacity: 1; }
+    .del-btn:hover { background: #fee2e2; color: var(--danger); }
+
+    /* ── Habit list ── */
+    .habit-list { display: flex; flex-direction: column; gap: .45rem; max-height: 420px; overflow-y: auto; }
+    .habit-item {
+      display: flex; align-items: center; gap: .65rem;
+      padding: .7rem .85rem; border-radius: 10px; border: 1.5px solid var(--border); transition: background .12s;
+    }
+    .habit-item:hover { background: #f8fafc; }
+    .habit-item.done-h { background: #f0fdf4; border-color: #bbf7d0; }
+    .habit-check {
+      width: 22px; height: 22px; border-radius: 6px; border: 2px solid #cbd5e1;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; cursor: pointer; transition: all .15s; font-size: .75rem; color: #fff;
+    }
+    .habit-check.on { background: var(--success); border-color: var(--success); }
+    .habit-info { flex: 1; }
+    .habit-name { font-size: .825rem; font-weight: 500; }
+    .habit-meta { font-size: .67rem; color: var(--muted); margin-top: 2px; }
+    .streak { font-size: .75rem; font-weight: 700; color: var(--warning); display: flex; align-items: center; gap: .2rem; flex-shrink: 0; }
+
+    /* ── Progress bar ── */
+    .pbar-wrap { background: var(--border); border-radius: 9999px; height: 7px; overflow: hidden; }
+    .pbar { height: 100%; border-radius: 9999px; transition: width .5s ease; }
+
+    /* ── Charts ── */
+    .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+    .chart-full { grid-column: 1 / -1; }
+    .chart-card { background: var(--card); border-radius: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.07); padding: 1.25rem; }
+    .chart-card h3 { font-size: .875rem; font-weight: 700; margin-bottom: .2rem; }
+    .chart-card p  { font-size: .72rem; color: var(--muted); margin-bottom: 1rem; }
+
+    /* ── Area overview cards ── */
+    .area-card {
+      background: var(--card); border-radius: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.07);
+      padding: 1rem; border-top: 3.5px solid; text-align: center;
+    }
+    .ac-icon { font-size: 1.6rem; margin-bottom: .4rem; }
+    .ac-name { font-size: .7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    .ac-pct  { font-size: 1.3rem; font-weight: 800; margin: .3rem 0; }
+
+    /* ── Monthly goals ── */
+    .goal-row { display: flex; align-items: center; gap: .85rem; padding: .85rem 0; border-bottom: 1px solid var(--border); }
+    .goal-row:last-child { border-bottom: none; }
+    .goal-area { width: 150px; font-size: .8rem; font-weight: 600; display: flex; align-items: center; gap: .45rem; flex-shrink: 0; }
+    .goal-input {
+      flex: 1; padding: .38rem .65rem; border: 1.5px solid var(--border);
+      border-radius: 7px; font-size: .78rem; outline: none;
+    }
+    .goal-input:focus { border-color: var(--primary); }
+    .goal-slider-wrap { display: flex; align-items: center; gap: .5rem; width: 160px; flex-shrink: 0; }
+    .goal-slider-wrap input[type=range] { flex: 1; }
+    .goal-pct { font-size: .75rem; font-weight: 700; width: 34px; text-align: right; }
+
+    /* ── Reflection ── */
+    .refl-table { width: 100%; border-collapse: collapse; }
+    .refl-table td { padding: .7rem .5rem; border-bottom: 1px solid var(--border); font-size: .825rem; vertical-align: top; }
+    .refl-table td:first-child { color: var(--muted); font-weight: 600; width: 44%; }
+    .refl-table textarea {
+      width: 100%; border: 1.5px solid var(--border); border-radius: 7px;
+      padding: .45rem .6rem; font-size: .78rem; font-family: inherit;
+      resize: none; outline: none; min-height: 54px; transition: border-color .15s;
+    }
+    .refl-table textarea:focus { border-color: var(--primary); }
+
+    /* ── Weekly habit summary ── */
+    .whs-row { margin-bottom: .9rem; }
+    .whs-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: .3rem; font-size: .8rem; }
+    .whs-top span:last-child { font-size: .7rem; color: var(--muted); }
+
+    /* ── Empty state ── */
+    .empty { text-align: center; padding: 2rem 1rem; color: var(--muted); font-size: .82rem; }
+    .empty .ei { font-size: 1.75rem; margin-bottom: .5rem; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      background: #1e293b; color: #fff;
+      padding: .7rem 1.2rem; border-radius: 10px; font-size: .82rem; font-weight: 500;
+      box-shadow: 0 4px 18px rgba(0,0,0,.22);
+      transform: translateY(80px); opacity: 0; transition: all .28s ease; z-index: 999;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    /* ── Responsive ── */
+    @media (max-width: 960px) {
+      .stats-row { grid-template-columns: repeat(2,1fr); }
+      .two-col, .charts-grid { grid-template-columns: 1fr; }
+      .chart-full { grid-column: 1; }
+      .five-col { grid-template-columns: repeat(3,1fr); }
+    }
+    @media (max-width: 600px) {
+      .container { padding: 1rem; }
+      header { padding: 0 1rem; }
+      .tab-nav { padding: 0 .75rem; overflow-x: auto; }
+      .stats-row { grid-template-columns: repeat(2,1fr); }
+      .five-col { grid-template-columns: repeat(2,1fr); }
+      .add-row { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════ HEADER ══════════════════════════ -->
+<header>
+  <div class="hd-brand">
+    <span class="logo">🌟</span>
+    <div>
+      <h1>Life Dashboard</h1>
+      <p>Your personal command centre</p>
+    </div>
+  </div>
+  <div class="hd-right">
+    <div class="hd-date">
+      <strong id="hd-day"></strong>
+      <span id="hd-full"></span>
+    </div>
+    <div class="avatar">H</div>
+  </div>
+</header>
+
+<!-- ══════════════════════════ TAB NAV ══════════════════════════ -->
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="showTab('today',this)">📅 Today</button>
+  <button class="tab-btn" onclick="showTab('weekly',this)">🗓️ Weekly</button>
+  <button class="tab-btn" onclick="showTab('monthly',this)">📆 Monthly</button>
+  <button class="tab-btn" onclick="showTab('progress',this)">📊 Progress</button>
+</nav>
+
+<!-- ══════════════════════════ MAIN ══════════════════════════ -->
+<div class="container">
+
+  <!-- STATS ROW -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon si-tasks">✅</div>
+      <div>
+        <div class="stat-val" id="s-tasks">0/0</div>
+        <div class="stat-lbl">Tasks Today</div>
+        <div class="stat-sub" id="s-tasks-sub"></div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon si-habits">🔥</div>
+      <div>
+        <div class="stat-val" id="s-habits">0/0</div>
+        <div class="stat-lbl">Habits Done</div>
+        <div class="stat-sub" id="s-habits-sub"></div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon si-streak">⚡</div>
+      <div>
+        <div class="stat-val" id="s-streak">0</div>
+        <div class="stat-lbl">Best Streak</div>
+        <div class="stat-sub">days in a row</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon si-prog">📈</div>
+      <div>
+        <div class="stat-val" id="s-prog">0%</div>
+        <div class="stat-lbl">Today's Progress</div>
+        <div class="stat-sub" id="s-prog-sub">keep going!</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════ TODAY ════════════ -->
+  <div id="tab-today" class="tab-pane active">
+    <div class="two-col">
+
+      <!-- Tasks -->
+      <div class="section-card">
+        <div class="sc-header">
+          <span class="sc-title">📋 Today's Tasks</span>
+          <span class="sc-badge" id="task-badge"></span>
+        </div>
+        <div class="sc-body">
+          <div class="add-row">
+            <input id="t-input" type="text" placeholder="Add a new task…" onkeydown="if(event.key==='Enter')addTask()">
+            <select id="t-pri">
+              <option value="high">🔴 High</option>
+              <option value="medium" selected>🟡 Medium</option>
+              <option value="low">🟢 Low</option>
+            </select>
+            <select id="t-area">
+              <option value="health">💪 Health</option>
+              <option value="work">💼 Work</option>
+              <option value="growth">🌱 Growth</option>
+              <option value="finance">💰 Finance</option>
+              <option value="relations">❤️ People</option>
+            </select>
+            <button class="btn btn-primary" onclick="addTask()">+ Add</button>
+          </div>
+          <div class="pills" id="task-pills">
+            <span class="pill active" onclick="setTaskFilter('all',this)">All</span>
+            <span class="pill" onclick="setTaskFilter('high',this)">🔴 High</span>
+            <span class="pill" onclick="setTaskFilter('medium',this)">🟡 Medium</span>
+            <span class="pill" onclick="setTaskFilter('low',this)">🟢 Low</span>
+            <span class="pill" onclick="setTaskFilter('pending',this)">Pending</span>
+          </div>
+          <div class="task-list" id="task-list"></div>
+        </div>
+      </div>
+
+      <!-- Habits -->
+      <div class="section-card">
+        <div class="sc-header">
+          <span class="sc-title">✅ Habit Tracker</span>
+          <span class="sc-badge" id="habit-badge"></span>
+        </div>
+        <div class="sc-body">
+          <div class="pills" id="habit-pills">
+            <span class="pill active" onclick="setHabitFilter('all',this)">All</span>
+            <span class="pill" onclick="setHabitFilter('health',this)">💪 Health</span>
+            <span class="pill" onclick="setHabitFilter('work',this)">💼 Work</span>
+            <span class="pill" onclick="setHabitFilter('growth',this)">🌱 Growth</span>
+            <span class="pill" onclick="setHabitFilter('finance',this)">💰 Finance</span>
+            <span class="pill" onclick="setHabitFilter('relations',this)">❤️ People</span>
+          </div>
+          <div class="habit-list" id="habit-list"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════ WEEKLY ════════════ -->
+  <div id="tab-weekly" class="tab-pane">
+    <div class="two-col">
+
+      <div class="section-card">
+        <div class="sc-header">
+          <span class="sc-title">🪞 Weekly Reflection</span>
+          <button class="btn btn-primary btn-sm" onclick="saveRefl()">Save</button>
+        </div>
+        <div class="sc-body">
+          <table class="refl-table">
+            <tr><td>What went well this week?</td><td><textarea id="r1" placeholder="Your wins…" oninput="saveRefl()"></textarea></td></tr>
+            <tr><td>What could be improved?</td><td><textarea id="r2" placeholder="Areas for growth…" oninput="saveRefl()"></textarea></td></tr>
+            <tr><td>Top 3 wins this week</td><td><textarea id="r3" placeholder="1. 2. 3." oninput="saveRefl()"></textarea></td></tr>
+            <tr><td>What drained my energy?</td><td><textarea id="r4" placeholder="Things to address…" oninput="saveRefl()"></textarea></td></tr>
+            <tr><td>Focus for next week</td><td><textarea id="r5" placeholder="My intention is…" oninput="saveRefl()"></textarea></td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="sc-header"><span class="sc-title">📊 Habit Completion by Area</span></div>
+        <div class="sc-body" id="weekly-habits"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════ MONTHLY ════════════ -->
+  <div id="tab-monthly" class="tab-pane">
+
+    <div class="five-col" id="area-cards"></div>
+
+    <div class="section-card">
+      <div class="sc-header">
+        <span class="sc-title">🎯 Monthly Goals & Progress</span>
+        <button class="btn btn-primary btn-sm" onclick="saveMonthly()">Save</button>
+      </div>
+      <div class="sc-body" id="monthly-body"></div>
+    </div>
+
+  </div>
+
+  <!-- ════════════ PROGRESS ════════════ -->
+  <div id="tab-progress" class="tab-pane">
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Progress by Life Area</h3>
+        <p>Completion rate across tasks &amp; habits in each area.</p>
+        <canvas id="barChart" height="230"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Life Balance Radar</h3>
+        <p>How evenly are you spreading attention across all areas?</p>
+        <canvas id="radarChart" height="230"></canvas>
+      </div>
+      <div class="chart-card chart-full">
+        <h3>Weekly Progress Trend</h3>
+        <p>Your overall completion rate week by week. A rising line means you are building momentum.</p>
+        <canvas id="lineChart" height="110"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- /container -->
+
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════ SCRIPT ══════════════════════════ -->
+<script>
+// ─── Area meta ───────────────────────────────────────────────
+const AREAS = {
+  health:    { label: '💪 Health & Fitness', short: 'Health',   color: '#f97316' },
+  work:      { label: '💼 Work & Career',    short: 'Work',     color: '#3b82f6' },
+  growth:    { label: '🌱 Personal Growth',  short: 'Growth',   color: '#10b981' },
+  finance:   { label: '💰 Finance',          short: 'Finance',  color: '#eab308' },
+  relations: { label: '❤️ Relationships',    short: 'People',   color: '#ec4899' },
+};
+
+// ─── Default data ────────────────────────────────────────────
+const DEFAULT_TASKS = [
+  { id:'t1', text:'Schedule a workout for this week',   priority:'high',   area:'health',    done:false },
+  { id:'t2', text:'Plan weekly meals / groceries',      priority:'medium', area:'health',    done:false },
+  { id:'t3', text:'Review top 3 work priorities',       priority:'high',   area:'work',      done:false },
+  { id:'t4', text:'Start a new book or course',         priority:'medium', area:'growth',    done:false },
+  { id:'t5', text:"Review this month's budget",         priority:'high',   area:'finance',   done:false },
+  { id:'t6', text:'Plan a social activity or catch-up', priority:'medium', area:'relations', done:false },
+];
+
+const DEFAULT_HABITS = [
+  { id:'h1',  text:'🏃 Morning workout / movement',    area:'health',    freq:'Daily',  target:'30 min',             streak:0, done:false },
+  { id:'h2',  text:'💧 Drink 8 glasses of water',      area:'health',    freq:'Daily',  target:'8 glasses',          streak:0, done:false },
+  { id:'h3',  text:'😴 Sleep 7–8 hours',               area:'health',    freq:'Daily',  target:'7–8 hrs',            streak:0, done:false },
+  { id:'h4',  text:"📋 Plan tomorrow's tasks",         area:'work',      freq:'Daily',  target:'5 min each evening', streak:0, done:false },
+  { id:'h5',  text:'📵 No screens 1 hr before bed',    area:'work',      freq:'Daily',  target:'9 pm cutoff',        streak:0, done:false },
+  { id:'h6',  text:'📚 Read 20 pages',                 area:'growth',    freq:'Daily',  target:'20 pages',           streak:0, done:false },
+  { id:'h7',  text:'✍️ Journal / reflect',             area:'growth',    freq:'Daily',  target:'5–10 min',           streak:0, done:false },
+  { id:'h8',  text:'💰 Log daily expenses',            area:'finance',   freq:'Daily',  target:'All spending logged',streak:0, done:false },
+  { id:'h9',  text:'📊 Review weekly budget',          area:'finance',   freq:'Weekly', target:'Every Sunday',       streak:0, done:false },
+  { id:'h10', text:'❤️ Check in with someone you care about', area:'relations', freq:'Weekly', target:'1 meaningful check-in', streak:0, done:false },
+];
+
+const DEFAULT_MONTHLY = Object.keys(AREAS).map(k => ({ area:k, goal:'', progress:0 }));
+const DEFAULT_REFL    = { r1:'', r2:'', r3:'', r4:'', r5:'' };
+const DEFAULT_TREND   = [
+  { week:'Week 1', score:0 },
+  { week:'Week 2', score:0 },
+  { week:'Week 3', score:0 },
+  { week:'This week', score:0 },
+];
+
+// ─── State ───────────────────────────────────────────────────
+let tasks   = load('ld_tasks')   || DEFAULT_TASKS;
+let habits  = load('ld_habits')  || DEFAULT_HABITS;
+let monthly = load('ld_monthly') || DEFAULT_MONTHLY;
+let refl    = load('ld_refl')    || DEFAULT_REFL;
+let trend   = load('ld_trend')   || DEFAULT_TREND;
+
+let taskFilter  = 'all';
+let habitFilter = 'all';
+let barChart, radarChart, lineChart;
+
+// ─── Persist ─────────────────────────────────────────────────
+function load(k)    { try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } }
+function persist()  {
+  localStorage.setItem('ld_tasks',   JSON.stringify(tasks));
+  localStorage.setItem('ld_habits',  JSON.stringify(habits));
+  localStorage.setItem('ld_monthly', JSON.stringify(monthly));
+  localStorage.setItem('ld_refl',    JSON.stringify(refl));
+  localStorage.setItem('ld_trend',   JSON.stringify(trend));
+}
+
+// ─── Date header ─────────────────────────────────────────────
+function initDate() {
+  const d = new Date();
+  const days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('hd-day').textContent  = days[d.getDay()];
+  document.getElementById('hd-full').textContent = `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+// ─── Tabs ────────────────────────────────────────────────────
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'progress') initCharts();
+  if (name === 'weekly')   renderWeekly();
+  if (name === 'monthly')  renderMonthly();
+}
+
+// ─── Stats ───────────────────────────────────────────────────
+function updateStats() {
+  const td = tasks.filter(t => t.done).length,  tt = tasks.length;
+  const hd = habits.filter(h => h.done).length, ht = habits.length;
+  const maxStreak = habits.reduce((m,h) => Math.max(m, h.streak||0), 0);
+  const total = tt + ht, done = td + hd;
+  const pct = total ? Math.round(done/total*100) : 0;
+
+  qs('#s-tasks').textContent    = `${td}/${tt}`;
+  qs('#s-tasks-sub').textContent= td===tt && tt>0 ? '🎉 All done!' : `${tt-td} remaining`;
+  qs('#s-habits').textContent   = `${hd}/${ht}`;
+  qs('#s-habits-sub').textContent= hd===ht && ht>0 ? '🎉 All done!' : `${ht-hd} remaining`;
+  qs('#s-streak').textContent   = maxStreak;
+  qs('#s-prog').textContent     = `${pct}%`;
+  const msgs = ['keep going!','you got this!','making progress!','almost there!','crushing it! 🔥'];
+  qs('#s-prog-sub').textContent = pct===100 ? '🎉 Perfect day!' : msgs[Math.floor(pct/25)];
+
+  qs('#task-badge').textContent  = `${td}/${tt} done`;
+  qs('#habit-badge').textContent = `${hd}/${ht} done`;
+}
+
+// ─── Tasks ───────────────────────────────────────────────────
+function addTask() {
+  const inp = qs('#t-input'), txt = inp.value.trim();
+  if (!txt) return;
+  tasks.push({ id:'t'+Date.now(), text:txt, priority:qs('#t-pri').value, area:qs('#t-area').value, done:false });
+  inp.value = '';
+  persist(); renderTasks(); updateStats(); toast('Task added ✓');
+}
+function toggleTask(id) {
+  const t = tasks.find(x=>x.id===id); if(!t) return;
+  t.done = !t.done;
+  persist(); renderTasks(); updateStats();
+  if (t.done) toast('✅ Task complete!');
+}
+function deleteTask(id) {
+  tasks = tasks.filter(x=>x.id!==id);
+  persist(); renderTasks(); updateStats();
+}
+function setTaskFilter(f, el) {
+  taskFilter = f;
+  qs('#task-pills').querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  renderTasks();
+}
+function renderTasks() {
+  const PO = {high:0,medium:1,low:2};
+  let list = [...tasks];
+  if (taskFilter==='high')    list = list.filter(t=>t.priority==='high');
+  else if (taskFilter==='medium') list = list.filter(t=>t.priority==='medium');
+  else if (taskFilter==='low')    list = list.filter(t=>t.priority==='low');
+  else if (taskFilter==='pending')list = list.filter(t=>!t.done);
+  list.sort((a,b) => a.done!==b.done ? (a.done?1:-1) : PO[a.priority]-PO[b.priority]);
+
+  const el = qs('#task-list');
+  if (!list.length) { el.innerHTML='<div class="empty"><div class="ei">🎉</div>Nothing here — all clear!</div>'; return; }
+  el.innerHTML = list.map(t => {
+    const m = AREAS[t.area];
+    return `<div class="task-item ${t.done?'done':''}">
+      <div class="check-circle ${t.done?'on':''}" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</div>
+      <div class="area-dot" style="background:${m.color}"></div>
+      <span class="task-text">${esc(t.text)}</span>
+      <span class="pri-badge pri-${t.priority}">${t.priority}</span>
+      <button class="del-btn" onclick="deleteTask('${t.id}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// ─── Habits ──────────────────────────────────────────────────
+function toggleHabit(id) {
+  const h = habits.find(x=>x.id===id); if(!h) return;
+  h.done = !h.done;
+  h.streak = h.done ? (h.streak||0)+1 : Math.max(0,(h.streak||0)-1);
+  persist(); renderHabits(); updateStats();
+  if (h.done) toast(h.streak>1 ? `🔥 ${h.streak}-day streak!` : '✅ Habit logged!');
+}
+function setHabitFilter(f, el) {
+  habitFilter = f;
+  qs('#habit-pills').querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  renderHabits();
+}
+function renderHabits() {
+  let list = habits.filter(h => habitFilter==='all' || h.area===habitFilter);
+  const el = qs('#habit-list');
+  if (!list.length) { el.innerHTML='<div class="empty"><div class="ei">✨</div>No habits in this area yet</div>'; return; }
+  el.innerHTML = list.map(h => {
+    const m = AREAS[h.area];
+    return `<div class="habit-item ${h.done?'done-h':''}">
+      <div class="habit-check ${h.done?'on':''}" onclick="toggleHabit('${h.id}')">${h.done?'✓':''}</div>
+      <div class="area-dot" style="background:${m.color}"></div>
+      <div class="habit-info">
+        <div class="habit-name">${esc(h.text)}</div>
+        <div class="habit-meta">${h.freq} · ${h.target}</div>
+      </div>
+      ${h.streak>0?`<div class="streak">🔥 ${h.streak}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ─── Weekly ──────────────────────────────────────────────────
+function renderWeekly() {
+  // Reflection
+  ['r1','r2','r3','r4','r5'].forEach(k => qs('#'+k).value = refl[k]||'');
+  // Habits by area
+  const el = qs('#weekly-habits');
+  el.innerHTML = Object.entries(AREAS).map(([key,m]) => {
+    const ah = habits.filter(h=>h.area===key);
+    const d  = ah.filter(h=>h.done).length;
+    const pct= ah.length ? Math.round(d/ah.length*100) : 0;
+    return `<div class="whs-row">
+      <div class="whs-top"><span style="font-weight:600">${m.label}</span><span>${d}/${ah.length} · ${pct}%</span></div>
+      <div class="pbar-wrap"><div class="pbar" style="width:${pct}%;background:${m.color}"></div></div>
+    </div>`;
+  }).join('');
+}
+function saveRefl() {
+  ['r1','r2','r3','r4','r5'].forEach(k => refl[k] = qs('#'+k).value);
+  persist(); toast('Reflection saved ✓');
+}
+
+// ─── Monthly ─────────────────────────────────────────────────
+function renderMonthly() {
+  // Area overview cards
+  qs('#area-cards').innerHTML = Object.entries(AREAS).map(([key,m]) => {
+    const mo = monthly.find(x=>x.area===key)||{progress:0};
+    return `<div class="area-card" style="border-top-color:${m.color}">
+      <div class="ac-icon">${m.label.split(' ')[0]}</div>
+      <div class="ac-name">${m.short}</div>
+      <div class="ac-pct" style="color:${m.color}">${mo.progress}%</div>
+      <div class="pbar-wrap"><div class="pbar" style="width:${mo.progress}%;background:${m.color}"></div></div>
+    </div>`;
+  }).join('');
+
+  // Goals form
+  qs('#monthly-body').innerHTML = monthly.map((mo,i) => {
+    const m = AREAS[mo.area];
+    return `<div class="goal-row">
+      <div class="goal-area"><div class="area-dot" style="background:${m.color};width:10px;height:10px"></div>${m.label}</div>
+      <input class="goal-input" type="text" placeholder="Set your goal for this month…" value="${esc(mo.goal)}"
+        oninput="monthly[${i}].goal=this.value">
+      <div class="goal-slider-wrap">
+        <input type="range" min="0" max="100" value="${mo.progress}" style="accent-color:${m.color}"
+          oninput="monthly[${i}].progress=+this.value;document.getElementById('mp${i}').textContent=this.value+'%'">
+        <span class="goal-pct" id="mp${i}">${mo.progress}%</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function saveMonthly() {
+  persist(); renderMonthly(); toast('Monthly goals saved ✓');
+}
+
+// ─── Charts ──────────────────────────────────────────────────
+function areaProgress() {
+  return Object.keys(AREAS).map(key => {
+    const at = tasks.filter(t=>t.area===key),  dt = at.filter(t=>t.done).length;
+    const ah = habits.filter(h=>h.area===key), dh = ah.filter(h=>h.done).length;
+    const total = at.length + ah.length;
+    return total ? Math.round((dt+dh)/total*100) : 0;
+  });
+}
+
+function initCharts() {
+  const aVals  = Object.values(AREAS);
+  const labels = aVals.map(a=>a.short);
+  const colors = aVals.map(a=>a.color);
+  const data   = areaProgress();
+
+  // Update trend
+  const avg = data.reduce((s,v)=>s+v,0)/data.length;
+  trend[trend.length-1].score = Math.round(avg);
+  persist();
+
+  // Bar
+  if (barChart) barChart.destroy();
+  barChart = new Chart(qs('#barChart'), {
+    type:'bar',
+    data:{labels, datasets:[{
+      label:'Completion %', data,
+      backgroundColor: colors.map(c=>c+'bb'),
+      borderColor: colors, borderWidth:2, borderRadius:7,
+    }]},
+    options:{
+      responsive:true, plugins:{legend:{display:false}},
+      scales:{
+        y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'},grid:{color:'#f1f5f9'}},
+        x:{grid:{display:false}}
+      }
+    }
+  });
+
+  // Radar
+  if (radarChart) radarChart.destroy();
+  radarChart = new Chart(qs('#radarChart'), {
+    type:'radar',
+    data:{labels, datasets:[{
+      label:'You', data,
+      backgroundColor:'rgba(99,102,241,.12)',
+      borderColor:'#6366f1', borderWidth:2.5,
+      pointBackgroundColor:'#6366f1', pointRadius:4,
+    }]},
+    options:{
+      responsive:true, plugins:{legend:{display:false}},
+      scales:{r:{beginAtZero:true,max:100,ticks:{stepSize:25,callback:v=>v+'%'},grid:{color:'#e2e8f0'},pointLabels:{font:{size:11}}}}
+    }
+  });
+
+  // Line
+  if (lineChart) lineChart.destroy();
+  lineChart = new Chart(qs('#lineChart'), {
+    type:'line',
+    data:{labels:trend.map(t=>t.week), datasets:[{
+      label:'Overall %', data:trend.map(t=>t.score),
+      backgroundColor:'rgba(99,102,241,.08)',
+      borderColor:'#6366f1', borderWidth:2.5,
+      fill:true, tension:.4,
+      pointBackgroundColor:'#6366f1', pointRadius:5,
+    }]},
+    options:{
+      responsive:true, plugins:{legend:{display:false}},
+      scales:{
+        y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'},grid:{color:'#f1f5f9'}},
+        x:{grid:{display:false}}
+      }
+    }
+  });
+}
+
+// ─── Toast ───────────────────────────────────────────────────
+let toastTimer;
+function toast(msg) {
+  const el = qs('#toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// ─── Utils ───────────────────────────────────────────────────
+const qs  = s => document.querySelector(s);
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// ─── Boot ────────────────────────────────────────────────────
+initDate();
+renderTasks();
+renderHabits();
+updateStats();
+</script>
+</body>
+</html>

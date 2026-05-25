@@ -665,13 +665,22 @@ async function handleSignOut() {
 async function loadUserData(userId) {
   showLoading(true);
   qs('#auth-overlay').classList.add('hidden');
-  const [tRes, hRes, mRes, rRes, trRes] = await Promise.all([
+
+  const withTimeout = (promise, ms) => Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Query timed out after ' + ms + 'ms')), ms))
+  ]);
+
+  const [tRes, hRes, mRes, rRes, trRes] = await withTimeout(Promise.all([
     sb.from('tasks').select('*').eq('user_id', userId),
     sb.from('habits').select('*').eq('user_id', userId),
     sb.from('monthly_goals').select('*').eq('user_id', userId),
     sb.from('reflections').select('*').eq('user_id', userId).maybeSingle(),
     sb.from('trend').select('*').eq('user_id', userId),
-  ]);
+  ]), 10000);
+
+  if (tRes.error) throw new Error('tasks: ' + tRes.error.message);
+  if (hRes.error) throw new Error('habits: ' + hRes.error.message);
 
   const isNewUser = !tRes.data || tRes.data.length === 0;
 

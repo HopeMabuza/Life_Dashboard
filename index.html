@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hope's Life Dashboard</title>
+  <title>Life Dashboard</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <style>
     :root {
       --bg: #f1f5f9;
@@ -27,6 +28,43 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
+    /* ── Auth overlay ── */
+    .auth-overlay {
+      position: fixed; inset: 0; background: rgba(15,23,42,.75);
+      display: flex; align-items: center; justify-content: center; z-index: 1000;
+      backdrop-filter: blur(6px);
+    }
+    .auth-overlay.hidden { display: none; }
+    .auth-card {
+      background: var(--card); border-radius: 20px; padding: 2.5rem 2rem;
+      width: 100%; max-width: 390px; box-shadow: 0 24px 64px rgba(0,0,0,.3);
+      text-align: center;
+    }
+    .auth-logo { font-size: 2.5rem; margin-bottom: .4rem; }
+    .auth-title { font-size: 1.5rem; font-weight: 800; margin-bottom: .2rem; }
+    .auth-sub { font-size: .8rem; color: var(--muted); margin-bottom: 1.75rem; }
+    .auth-tabs { display: flex; background: var(--bg); border-radius: 10px; padding: 3px; margin-bottom: 1.25rem; }
+    .auth-tab {
+      flex: 1; padding: .48rem; border: none; border-radius: 8px;
+      cursor: pointer; font-size: .82rem; font-weight: 600; color: var(--muted); background: none;
+      transition: all .15s;
+    }
+    .auth-tab.active { background: var(--card); color: var(--primary); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+    .auth-input {
+      display: block; width: 100%; padding: .7rem .9rem; margin-bottom: .75rem;
+      border: 1.5px solid var(--border); border-radius: 10px; font-size: .85rem;
+      outline: none; transition: border-color .15s; font-family: inherit;
+    }
+    .auth-input:focus { border-color: var(--primary); }
+    .auth-error {
+      background: #fee2e2; color: #dc2626; padding: .6rem .85rem;
+      border-radius: 8px; font-size: .78rem; margin-bottom: .75rem; text-align: left;
+      display: none;
+    }
+    .auth-switch { font-size: .78rem; color: var(--muted); margin-top: 1rem; }
+    .auth-switch a { color: var(--primary); cursor: pointer; font-weight: 600; }
+    .auth-btn-full { width: 100%; padding: .7rem; font-size: .9rem; border-radius: 10px; }
+
     /* ── Header ── */
     header {
       background: var(--header); color: #f8fafc;
@@ -43,7 +81,13 @@
     .hd-date { text-align: right; }
     .hd-date strong { display: block; font-size: .85rem; }
     .hd-date span { font-size: .7rem; color: #94a3b8; }
-    .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; }
+    .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+    .logout-btn {
+      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+      color: #cbd5e1; font-size: .72rem; font-weight: 600; padding: .3rem .75rem;
+      border-radius: 7px; cursor: pointer; transition: all .15s;
+    }
+    .logout-btn:hover { background: rgba(255,255,255,.15); color: #fff; }
 
     /* ── Tab nav ── */
     .tab-nav {
@@ -224,6 +268,20 @@
     .empty { text-align: center; padding: 2rem 1rem; color: var(--muted); font-size: .82rem; }
     .empty .ei { font-size: 1.75rem; margin-bottom: .5rem; }
 
+    /* ── Loading state ── */
+    .loading-screen {
+      position: fixed; inset: 0; background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 1rem; z-index: 500;
+    }
+    .loading-screen.hidden { display: none; }
+    .spinner {
+      width: 36px; height: 36px; border: 3px solid var(--border);
+      border-top-color: var(--primary); border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     /* ── Toast ── */
     .toast {
       position: fixed; bottom: 1.5rem; right: 1.5rem;
@@ -253,6 +311,38 @@
 </head>
 <body>
 
+<!-- ══════════════════════════ AUTH OVERLAY ══════════════════════════ -->
+<div id="auth-overlay" class="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo">🌟</div>
+    <h2 class="auth-title">Life Dashboard</h2>
+    <p class="auth-sub">Your personal command centre</p>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Sign In</button>
+      <button class="auth-tab" id="tab-signup" onclick="switchAuthTab('signup')">Sign Up</button>
+    </div>
+
+    <div id="auth-error" class="auth-error"></div>
+
+    <input id="auth-email"    type="email"    class="auth-input" placeholder="Email address" />
+    <input id="auth-password" type="password" class="auth-input" placeholder="Password" />
+    <input id="auth-password2" type="password" class="auth-input" placeholder="Confirm password" style="display:none" />
+
+    <button class="btn btn-primary auth-btn-full" id="auth-submit-btn" onclick="handleAuth()">Sign In</button>
+
+    <p class="auth-switch" id="auth-switch-text">
+      Don't have an account? <a onclick="switchAuthTab('signup')">Sign up</a>
+    </p>
+  </div>
+</div>
+
+<!-- ══════════════════════════ LOADING ══════════════════════════ -->
+<div id="loading-screen" class="loading-screen hidden">
+  <div class="spinner"></div>
+  <span style="font-size:.85rem;color:var(--muted)">Loading your dashboard…</span>
+</div>
+
 <!-- ══════════════════════════ HEADER ══════════════════════════ -->
 <header>
   <div class="hd-brand">
@@ -267,7 +357,8 @@
       <strong id="hd-day"></strong>
       <span id="hd-full"></span>
     </div>
-    <div class="avatar">H</div>
+    <div class="avatar" id="user-avatar">?</div>
+    <button class="logout-btn" onclick="handleSignOut()">Sign out</button>
   </div>
 </header>
 
@@ -450,6 +541,13 @@
 
 <!-- ══════════════════════════ SCRIPT ══════════════════════════ -->
 <script>
+// ─── Supabase ────────────────────────────────────────────────
+const { createClient } = window.supabase;
+const sb = createClient(
+  'https://kemzwvseuvssieoqxist.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtlbXp3dnNldXZzc2llb3F4aXN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2OTg1MjAsImV4cCI6MjA5NTI3NDUyMH0.UDuu8IDfHhxkIO4WQwmVDv_KlOwsq_kzZlTuvy-HgXo'
+);
+
 // ─── Area meta ───────────────────────────────────────────────
 const AREAS = {
   health:    { label: '💪 Health & Fitness', short: 'Health',   color: '#f97316' },
@@ -459,57 +557,184 @@ const AREAS = {
   relations: { label: '❤️ Relationships',    short: 'People',   color: '#ec4899' },
 };
 
-// ─── Default data ────────────────────────────────────────────
-const DEFAULT_TASKS = [
-  { id:'t1', text:'Schedule a workout for this week',   priority:'high',   area:'health',    done:false },
-  { id:'t2', text:'Plan weekly meals / groceries',      priority:'medium', area:'health',    done:false },
-  { id:'t3', text:'Review top 3 work priorities',       priority:'high',   area:'work',      done:false },
-  { id:'t4', text:'Start a new book or course',         priority:'medium', area:'growth',    done:false },
-  { id:'t5', text:"Review this month's budget",         priority:'high',   area:'finance',   done:false },
-  { id:'t6', text:'Plan a social activity or catch-up', priority:'medium', area:'relations', done:false },
+// ─── Default seed data for new users ────────────────────────
+const SEED_TASKS = [
+  { text:'Schedule a workout for this week',   priority:'high',   area:'health'    },
+  { text:'Plan weekly meals / groceries',      priority:'medium', area:'health'    },
+  { text:'Review top 3 work priorities',       priority:'high',   area:'work'      },
+  { text:'Start a new book or course',         priority:'medium', area:'growth'    },
+  { text:"Review this month's budget",         priority:'high',   area:'finance'   },
+  { text:'Plan a social activity or catch-up', priority:'medium', area:'relations' },
 ];
-
-const DEFAULT_HABITS = [
-  { id:'h1',  text:'🏃 Morning workout / movement',    area:'health',    freq:'Daily',  target:'30 min',             streak:0, done:false },
-  { id:'h2',  text:'💧 Drink 8 glasses of water',      area:'health',    freq:'Daily',  target:'8 glasses',          streak:0, done:false },
-  { id:'h3',  text:'😴 Sleep 7–8 hours',               area:'health',    freq:'Daily',  target:'7–8 hrs',            streak:0, done:false },
-  { id:'h4',  text:"📋 Plan tomorrow's tasks",         area:'work',      freq:'Daily',  target:'5 min each evening', streak:0, done:false },
-  { id:'h5',  text:'📵 No screens 1 hr before bed',    area:'work',      freq:'Daily',  target:'9 pm cutoff',        streak:0, done:false },
-  { id:'h6',  text:'📚 Read 20 pages',                 area:'growth',    freq:'Daily',  target:'20 pages',           streak:0, done:false },
-  { id:'h7',  text:'✍️ Journal / reflect',             area:'growth',    freq:'Daily',  target:'5–10 min',           streak:0, done:false },
-  { id:'h8',  text:'💰 Log daily expenses',            area:'finance',   freq:'Daily',  target:'All spending logged',streak:0, done:false },
-  { id:'h9',  text:'📊 Review weekly budget',          area:'finance',   freq:'Weekly', target:'Every Sunday',       streak:0, done:false },
-  { id:'h10', text:'❤️ Check in with someone you care about', area:'relations', freq:'Weekly', target:'1 meaningful check-in', streak:0, done:false },
-];
-
-const DEFAULT_MONTHLY = Object.keys(AREAS).map(k => ({ area:k, goal:'', progress:0 }));
-const DEFAULT_REFL    = { r1:'', r2:'', r3:'', r4:'', r5:'' };
-const DEFAULT_TREND   = [
-  { week:'Week 1', score:0 },
-  { week:'Week 2', score:0 },
-  { week:'Week 3', score:0 },
-  { week:'This week', score:0 },
+const SEED_HABITS = [
+  { text:'🏃 Morning workout / movement',           area:'health',    freq:'Daily',  target:'30 min'              },
+  { text:'💧 Drink 8 glasses of water',             area:'health',    freq:'Daily',  target:'8 glasses'           },
+  { text:'😴 Sleep 7–8 hours',                      area:'health',    freq:'Daily',  target:'7–8 hrs'             },
+  { text:"📋 Plan tomorrow's tasks",                area:'work',      freq:'Daily',  target:'5 min each evening'  },
+  { text:'📵 No screens 1 hr before bed',           area:'work',      freq:'Daily',  target:'9 pm cutoff'         },
+  { text:'📚 Read 20 pages',                        area:'growth',    freq:'Daily',  target:'20 pages'            },
+  { text:'✍️ Journal / reflect',                    area:'growth',    freq:'Daily',  target:'5–10 min'            },
+  { text:'💰 Log daily expenses',                   area:'finance',   freq:'Daily',  target:'All spending logged' },
+  { text:'📊 Review weekly budget',                 area:'finance',   freq:'Weekly', target:'Every Sunday'        },
+  { text:'❤️ Check in with someone you care about', area:'relations', freq:'Weekly', target:'1 meaningful check-in'},
 ];
 
 // ─── State ───────────────────────────────────────────────────
-let tasks   = load('ld_tasks')   || DEFAULT_TASKS;
-let habits  = load('ld_habits')  || DEFAULT_HABITS;
-let monthly = load('ld_monthly') || DEFAULT_MONTHLY;
-let refl    = load('ld_refl')    || DEFAULT_REFL;
-let trend   = load('ld_trend')   || DEFAULT_TREND;
+let currentUser = null;
+let tasks   = [];
+let habits  = [];
+let monthly = [];
+let refl    = {};
+let trend   = [];
 
 let taskFilter  = 'all';
 let habitFilter = 'all';
 let barChart, radarChart, lineChart;
+let reflDebounce;
 
-// ─── Persist ─────────────────────────────────────────────────
-function load(k)    { try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } }
-function persist()  {
-  localStorage.setItem('ld_tasks',   JSON.stringify(tasks));
-  localStorage.setItem('ld_habits',  JSON.stringify(habits));
-  localStorage.setItem('ld_monthly', JSON.stringify(monthly));
-  localStorage.setItem('ld_refl',    JSON.stringify(refl));
-  localStorage.setItem('ld_trend',   JSON.stringify(trend));
+// ─── Auth UI ─────────────────────────────────────────────────
+let authMode = 'login';
+
+function switchAuthTab(mode) {
+  authMode = mode;
+  qs('#tab-login').classList.toggle('active', mode === 'login');
+  qs('#tab-signup').classList.toggle('active', mode === 'signup');
+  qs('#auth-password2').style.display = mode === 'signup' ? 'block' : 'none';
+  qs('#auth-submit-btn').textContent = mode === 'login' ? 'Sign In' : 'Create Account';
+  qs('#auth-switch-text').innerHTML = mode === 'login'
+    ? "Don't have an account? <a onclick=\"switchAuthTab('signup')\">Sign up</a>"
+    : "Already have an account? <a onclick=\"switchAuthTab('login')\">Sign in</a>";
+  qs('#auth-error').style.display = 'none';
+}
+
+function showAuthError(msg) {
+  const el = qs('#auth-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function handleAuth() {
+  const email = qs('#auth-email').value.trim();
+  const password = qs('#auth-password').value;
+  const password2 = qs('#auth-password2').value;
+  const btn = qs('#auth-submit-btn');
+
+  if (!email || !password) { showAuthError('Please enter your email and password.'); return; }
+  if (authMode === 'signup' && password !== password2) { showAuthError('Passwords do not match.'); return; }
+  if (authMode === 'signup' && password.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
+
+  btn.textContent = '…';
+  btn.disabled = true;
+  qs('#auth-error').style.display = 'none';
+
+  let error;
+  if (authMode === 'login') {
+    ({ error } = await sb.auth.signInWithPassword({ email, password }));
+  } else {
+    ({ error } = await sb.auth.signUp({ email, password }));
+  }
+
+  btn.disabled = false;
+  btn.textContent = authMode === 'login' ? 'Sign In' : 'Create Account';
+
+  if (error) { showAuthError(error.message); return; }
+  if (authMode === 'signup') {
+    showAuthError('');
+    qs('#auth-error').style.cssText = 'display:block;background:#f0fdf4;color:#16a34a;padding:.6rem .85rem;border-radius:8px;font-size:.78rem;margin-bottom:.75rem;text-align:left;';
+    qs('#auth-error').textContent = 'Account created! Check your email to confirm, then sign in.';
+  }
+}
+
+async function handleSignOut() {
+  await sb.auth.signOut();
+  tasks = []; habits = []; monthly = []; refl = {}; trend = [];
+  currentUser = null;
+  qs('#auth-overlay').classList.remove('hidden');
+  qs('#auth-email').value = '';
+  qs('#auth-password').value = '';
+  qs('#auth-password2').value = '';
+  qs('#auth-error').style.display = 'none';
+  switchAuthTab('login');
+}
+
+// ─── Data loading ────────────────────────────────────────────
+async function loadUserData(userId) {
+  showLoading(true);
+  const [tRes, hRes, mRes, rRes, trRes] = await Promise.all([
+    sb.from('tasks').select('*').eq('user_id', userId),
+    sb.from('habits').select('*').eq('user_id', userId),
+    sb.from('monthly_goals').select('*').eq('user_id', userId),
+    sb.from('reflections').select('*').eq('user_id', userId).maybeSingle(),
+    sb.from('trend').select('*').eq('user_id', userId),
+  ]);
+
+  const isNewUser = !tRes.data || tRes.data.length === 0;
+
+  if (isNewUser) {
+    await seedNewUser(userId);
+    const [t2, h2] = await Promise.all([
+      sb.from('tasks').select('*').eq('user_id', userId),
+      sb.from('habits').select('*').eq('user_id', userId),
+    ]);
+    tasks  = t2.data || [];
+    habits = h2.data || [];
+  } else {
+    tasks  = tRes.data || [];
+    habits = hRes.data || [];
+  }
+
+  monthly = mRes.data && mRes.data.length ? mRes.data : Object.keys(AREAS).map(a => ({ user_id: userId, area: a, goal: '', progress: 0 }));
+  refl    = rRes.data || { r1:'', r2:'', r3:'', r4:'', r5:'' };
+  trend   = trRes.data && trRes.data.length ? trRes.data : [
+    { user_id: userId, week:'Week 1', score:0 },
+    { user_id: userId, week:'Week 2', score:0 },
+    { user_id: userId, week:'Week 3', score:0 },
+    { user_id: userId, week:'This week', score:0 },
+  ];
+
+  showLoading(false);
+  qs('#auth-overlay').classList.add('hidden');
+  renderTasks(); renderHabits(); updateStats();
+}
+
+async function seedNewUser(userId) {
+  const now = new Date().toISOString();
+  const taskRows  = SEED_TASKS.map((t,i) => ({ id:'t'+Date.now()+i, user_id:userId, ...t, done:false, created_at:now }));
+  const habitRows = SEED_HABITS.map((h,i) => ({ id:'h'+Date.now()+i, user_id:userId, ...h, streak:0, done:false }));
+  const goalRows  = Object.keys(AREAS).map(a => ({ user_id:userId, area:a, goal:'', progress:0 }));
+  const reflRow   = { user_id:userId, r1:'', r2:'', r3:'', r4:'', r5:'' };
+  const trendRows = [
+    { user_id:userId, week:'Week 1', score:0 },
+    { user_id:userId, week:'Week 2', score:0 },
+    { user_id:userId, week:'Week 3', score:0 },
+    { user_id:userId, week:'This week', score:0 },
+  ];
+  await Promise.all([
+    sb.from('tasks').insert(taskRows),
+    sb.from('habits').insert(habitRows),
+    sb.from('monthly_goals').insert(goalRows),
+    sb.from('reflections').insert(reflRow),
+    sb.from('trend').insert(trendRows),
+  ]);
+}
+
+// ─── Auth state listener ─────────────────────────────────────
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session && session.user) {
+    currentUser = session.user;
+    const initials = (session.user.email || '?')[0].toUpperCase();
+    qs('#user-avatar').textContent = initials;
+    await loadUserData(session.user.id);
+  } else {
+    currentUser = null;
+    showLoading(false);
+    qs('#auth-overlay').classList.remove('hidden');
+  }
+});
+
+// ─── Loading helper ──────────────────────────────────────────
+function showLoading(on) {
+  qs('#loading-screen').classList.toggle('hidden', !on);
 }
 
 // ─── Date header ─────────────────────────────────────────────
@@ -517,15 +742,15 @@ function initDate() {
   const d = new Date();
   const days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  document.getElementById('hd-day').textContent  = days[d.getDay()];
-  document.getElementById('hd-full').textContent = `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  qs('#hd-day').textContent  = days[d.getDay()];
+  qs('#hd-full').textContent = `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 // ─── Tabs ────────────────────────────────────────────────────
 function showTab(name, btn) {
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
+  qs('#tab-' + name).classList.add('active');
   if (btn) btn.classList.add('active');
   if (name === 'progress') initCharts();
   if (name === 'weekly')   renderWeekly();
@@ -540,56 +765,74 @@ function updateStats() {
   const total = tt + ht, done = td + hd;
   const pct = total ? Math.round(done/total*100) : 0;
 
-  qs('#s-tasks').textContent    = `${td}/${tt}`;
-  qs('#s-tasks-sub').textContent= td===tt && tt>0 ? '🎉 All done!' : `${tt-td} remaining`;
-  qs('#s-habits').textContent   = `${hd}/${ht}`;
+  qs('#s-tasks').textContent     = `${td}/${tt}`;
+  qs('#s-tasks-sub').textContent = td===tt && tt>0 ? '🎉 All done!' : `${tt-td} remaining`;
+  qs('#s-habits').textContent    = `${hd}/${ht}`;
   qs('#s-habits-sub').textContent= hd===ht && ht>0 ? '🎉 All done!' : `${ht-hd} remaining`;
-  qs('#s-streak').textContent   = maxStreak;
-  qs('#s-prog').textContent     = `${pct}%`;
+  qs('#s-streak').textContent    = maxStreak;
+  qs('#s-prog').textContent      = `${pct}%`;
   const msgs = ['keep going!','you got this!','making progress!','almost there!','crushing it! 🔥'];
-  qs('#s-prog-sub').textContent = pct===100 ? '🎉 Perfect day!' : msgs[Math.floor(pct/25)];
-
+  qs('#s-prog-sub').textContent  = pct===100 ? '🎉 Perfect day!' : msgs[Math.floor(pct/25)];
   qs('#task-badge').textContent  = `${td}/${tt} done`;
   qs('#habit-badge').textContent = `${hd}/${ht} done`;
 }
 
 // ─── Tasks ───────────────────────────────────────────────────
-function addTask() {
+async function addTask() {
+  if (!currentUser) return;
   const inp = qs('#t-input'), txt = inp.value.trim();
   if (!txt) return;
-  tasks.push({ id:'t'+Date.now(), text:txt, priority:qs('#t-pri').value, area:qs('#t-area').value, done:false });
+  const newTask = {
+    id: 't' + Date.now(),
+    user_id: currentUser.id,
+    text: txt,
+    priority: qs('#t-pri').value,
+    area: qs('#t-area').value,
+    done: false,
+    created_at: new Date().toISOString(),
+  };
   inp.value = '';
-  persist(); renderTasks(); updateStats(); toast('Task added ✓');
+  tasks.push(newTask);
+  renderTasks(); updateStats();
+  const { error } = await sb.from('tasks').insert(newTask);
+  if (error) { toast('Error saving task ✕'); tasks = tasks.filter(t => t.id !== newTask.id); renderTasks(); updateStats(); }
+  else toast('Task added ✓');
 }
-function toggleTask(id) {
-  const t = tasks.find(x=>x.id===id); if(!t) return;
+
+async function toggleTask(id) {
+  const t = tasks.find(x => x.id === id); if (!t) return;
   t.done = !t.done;
-  persist(); renderTasks(); updateStats();
+  renderTasks(); updateStats();
+  await sb.from('tasks').update({ done: t.done }).eq('id', id).eq('user_id', currentUser.id);
   if (t.done) toast('✅ Task complete!');
 }
-function deleteTask(id) {
-  tasks = tasks.filter(x=>x.id!==id);
-  persist(); renderTasks(); updateStats();
+
+async function deleteTask(id) {
+  tasks = tasks.filter(x => x.id !== id);
+  renderTasks(); updateStats();
+  await sb.from('tasks').delete().eq('id', id).eq('user_id', currentUser.id);
 }
+
 function setTaskFilter(f, el) {
   taskFilter = f;
-  qs('#task-pills').querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  qs('#task-pills').querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
   renderTasks();
 }
+
 function renderTasks() {
-  const PO = {high:0,medium:1,low:2};
+  const PO = {high:0, medium:1, low:2};
   let list = [...tasks];
-  if (taskFilter==='high')    list = list.filter(t=>t.priority==='high');
-  else if (taskFilter==='medium') list = list.filter(t=>t.priority==='medium');
-  else if (taskFilter==='low')    list = list.filter(t=>t.priority==='low');
-  else if (taskFilter==='pending')list = list.filter(t=>!t.done);
+  if (taskFilter==='high')    list = list.filter(t => t.priority==='high');
+  else if (taskFilter==='medium') list = list.filter(t => t.priority==='medium');
+  else if (taskFilter==='low')    list = list.filter(t => t.priority==='low');
+  else if (taskFilter==='pending')list = list.filter(t => !t.done);
   list.sort((a,b) => a.done!==b.done ? (a.done?1:-1) : PO[a.priority]-PO[b.priority]);
 
   const el = qs('#task-list');
   if (!list.length) { el.innerHTML='<div class="empty"><div class="ei">🎉</div>Nothing here — all clear!</div>'; return; }
   el.innerHTML = list.map(t => {
-    const m = AREAS[t.area];
+    const m = AREAS[t.area] || AREAS.work;
     return `<div class="task-item ${t.done?'done':''}">
       <div class="check-circle ${t.done?'on':''}" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</div>
       <div class="area-dot" style="background:${m.color}"></div>
@@ -601,25 +844,28 @@ function renderTasks() {
 }
 
 // ─── Habits ──────────────────────────────────────────────────
-function toggleHabit(id) {
-  const h = habits.find(x=>x.id===id); if(!h) return;
+async function toggleHabit(id) {
+  const h = habits.find(x => x.id === id); if (!h) return;
   h.done = !h.done;
   h.streak = h.done ? (h.streak||0)+1 : Math.max(0,(h.streak||0)-1);
-  persist(); renderHabits(); updateStats();
+  renderHabits(); updateStats();
+  await sb.from('habits').update({ done: h.done, streak: h.streak }).eq('id', id).eq('user_id', currentUser.id);
   if (h.done) toast(h.streak>1 ? `🔥 ${h.streak}-day streak!` : '✅ Habit logged!');
 }
+
 function setHabitFilter(f, el) {
   habitFilter = f;
-  qs('#habit-pills').querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  qs('#habit-pills').querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
   renderHabits();
 }
+
 function renderHabits() {
   let list = habits.filter(h => habitFilter==='all' || h.area===habitFilter);
   const el = qs('#habit-list');
   if (!list.length) { el.innerHTML='<div class="empty"><div class="ei">✨</div>No habits in this area yet</div>'; return; }
   el.innerHTML = list.map(h => {
-    const m = AREAS[h.area];
+    const m = AREAS[h.area] || AREAS.work;
     return `<div class="habit-item ${h.done?'done-h':''}">
       <div class="habit-check ${h.done?'on':''}" onclick="toggleHabit('${h.id}')">${h.done?'✓':''}</div>
       <div class="area-dot" style="background:${m.color}"></div>
@@ -634,13 +880,11 @@ function renderHabits() {
 
 // ─── Weekly ──────────────────────────────────────────────────
 function renderWeekly() {
-  // Reflection
-  ['r1','r2','r3','r4','r5'].forEach(k => qs('#'+k).value = refl[k]||'');
-  // Habits by area
+  ['r1','r2','r3','r4','r5'].forEach(k => { qs('#'+k).value = refl[k]||''; });
   const el = qs('#weekly-habits');
   el.innerHTML = Object.entries(AREAS).map(([key,m]) => {
-    const ah = habits.filter(h=>h.area===key);
-    const d  = ah.filter(h=>h.done).length;
+    const ah = habits.filter(h => h.area===key);
+    const d  = ah.filter(h => h.done).length;
     const pct= ah.length ? Math.round(d/ah.length*100) : 0;
     return `<div class="whs-row">
       <div class="whs-top"><span style="font-weight:600">${m.label}</span><span>${d}/${ah.length} · ${pct}%</span></div>
@@ -648,16 +892,21 @@ function renderWeekly() {
     </div>`;
   }).join('');
 }
+
 function saveRefl() {
-  ['r1','r2','r3','r4','r5'].forEach(k => refl[k] = qs('#'+k).value);
-  persist(); toast('Reflection saved ✓');
+  ['r1','r2','r3','r4','r5'].forEach(k => { refl[k] = qs('#'+k).value; });
+  clearTimeout(reflDebounce);
+  reflDebounce = setTimeout(async () => {
+    if (!currentUser) return;
+    await sb.from('reflections').upsert({ user_id: currentUser.id, ...refl });
+    toast('Reflection saved ✓');
+  }, 800);
 }
 
 // ─── Monthly ─────────────────────────────────────────────────
 function renderMonthly() {
-  // Area overview cards
   qs('#area-cards').innerHTML = Object.entries(AREAS).map(([key,m]) => {
-    const mo = monthly.find(x=>x.area===key)||{progress:0};
+    const mo = monthly.find(x => x.area===key) || { progress:0 };
     return `<div class="area-card" style="border-top-color:${m.color}">
       <div class="ac-icon">${m.label.split(' ')[0]}</div>
       <div class="ac-name">${m.short}</div>
@@ -666,7 +915,6 @@ function renderMonthly() {
     </div>`;
   }).join('');
 
-  // Goals form
   qs('#monthly-body').innerHTML = monthly.map((mo,i) => {
     const m = AREAS[mo.area];
     return `<div class="goal-row">
@@ -681,83 +929,57 @@ function renderMonthly() {
     </div>`;
   }).join('');
 }
-function saveMonthly() {
-  persist(); renderMonthly(); toast('Monthly goals saved ✓');
+
+async function saveMonthly() {
+  if (!currentUser) return;
+  const rows = monthly.map(mo => ({ user_id: currentUser.id, area: mo.area, goal: mo.goal, progress: mo.progress }));
+  await sb.from('monthly_goals').upsert(rows);
+  renderMonthly();
+  toast('Monthly goals saved ✓');
 }
 
 // ─── Charts ──────────────────────────────────────────────────
 function areaProgress() {
   return Object.keys(AREAS).map(key => {
-    const at = tasks.filter(t=>t.area===key),  dt = at.filter(t=>t.done).length;
-    const ah = habits.filter(h=>h.area===key), dh = ah.filter(h=>h.done).length;
+    const at = tasks.filter(t  => t.area===key),  dt = at.filter(t => t.done).length;
+    const ah = habits.filter(h => h.area===key),  dh = ah.filter(h => h.done).length;
     const total = at.length + ah.length;
     return total ? Math.round((dt+dh)/total*100) : 0;
   });
 }
 
-function initCharts() {
+async function initCharts() {
   const aVals  = Object.values(AREAS);
-  const labels = aVals.map(a=>a.short);
-  const colors = aVals.map(a=>a.color);
+  const labels = aVals.map(a => a.short);
+  const colors = aVals.map(a => a.color);
   const data   = areaProgress();
 
-  // Update trend
-  const avg = data.reduce((s,v)=>s+v,0)/data.length;
-  trend[trend.length-1].score = Math.round(avg);
-  persist();
+  const avg = data.reduce((s,v) => s+v, 0) / data.length;
+  const thisWeek = trend.find(t => t.week === 'This week');
+  if (thisWeek) {
+    thisWeek.score = Math.round(avg);
+    await sb.from('trend').upsert({ user_id: currentUser.id, week: 'This week', score: thisWeek.score });
+  }
 
-  // Bar
   if (barChart) barChart.destroy();
   barChart = new Chart(qs('#barChart'), {
     type:'bar',
-    data:{labels, datasets:[{
-      label:'Completion %', data,
-      backgroundColor: colors.map(c=>c+'bb'),
-      borderColor: colors, borderWidth:2, borderRadius:7,
-    }]},
-    options:{
-      responsive:true, plugins:{legend:{display:false}},
-      scales:{
-        y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'},grid:{color:'#f1f5f9'}},
-        x:{grid:{display:false}}
-      }
-    }
+    data:{ labels, datasets:[{ label:'Completion %', data, backgroundColor: colors.map(c=>c+'bb'), borderColor: colors, borderWidth:2, borderRadius:7 }] },
+    options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'},grid:{color:'#f1f5f9'}}, x:{grid:{display:false}} } }
   });
 
-  // Radar
   if (radarChart) radarChart.destroy();
   radarChart = new Chart(qs('#radarChart'), {
     type:'radar',
-    data:{labels, datasets:[{
-      label:'You', data,
-      backgroundColor:'rgba(99,102,241,.12)',
-      borderColor:'#6366f1', borderWidth:2.5,
-      pointBackgroundColor:'#6366f1', pointRadius:4,
-    }]},
-    options:{
-      responsive:true, plugins:{legend:{display:false}},
-      scales:{r:{beginAtZero:true,max:100,ticks:{stepSize:25,callback:v=>v+'%'},grid:{color:'#e2e8f0'},pointLabels:{font:{size:11}}}}
-    }
+    data:{ labels, datasets:[{ label:'You', data, backgroundColor:'rgba(99,102,241,.12)', borderColor:'#6366f1', borderWidth:2.5, pointBackgroundColor:'#6366f1', pointRadius:4 }] },
+    options:{ responsive:true, plugins:{legend:{display:false}}, scales:{r:{beginAtZero:true,max:100,ticks:{stepSize:25,callback:v=>v+'%'},grid:{color:'#e2e8f0'},pointLabels:{font:{size:11}}}} }
   });
 
-  // Line
   if (lineChart) lineChart.destroy();
   lineChart = new Chart(qs('#lineChart'), {
     type:'line',
-    data:{labels:trend.map(t=>t.week), datasets:[{
-      label:'Overall %', data:trend.map(t=>t.score),
-      backgroundColor:'rgba(99,102,241,.08)',
-      borderColor:'#6366f1', borderWidth:2.5,
-      fill:true, tension:.4,
-      pointBackgroundColor:'#6366f1', pointRadius:5,
-    }]},
-    options:{
-      responsive:true, plugins:{legend:{display:false}},
-      scales:{
-        y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'},grid:{color:'#f1f5f9'}},
-        x:{grid:{display:false}}
-      }
-    }
+    data:{ labels:trend.map(t=>t.week), datasets:[{ label:'Overall %', data:trend.map(t=>t.score), backgroundColor:'rgba(99,102,241,.08)', borderColor:'#6366f1', borderWidth:2.5, fill:true, tension:.4, pointBackgroundColor:'#6366f1', pointRadius:5 }] },
+    options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'},grid:{color:'#f1f5f9'}}, x:{grid:{display:false}} } }
   });
 }
 
@@ -776,9 +998,6 @@ const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>
 
 // ─── Boot ────────────────────────────────────────────────────
 initDate();
-renderTasks();
-renderHabits();
-updateStats();
 </script>
 </body>
 </html>

@@ -628,10 +628,14 @@ async function handleAuth() {
   qs('#auth-error').style.display = 'none';
 
   let error;
-  if (authMode === 'login') {
-    ({ error } = await sb.auth.signInWithPassword({ email, password }));
-  } else {
-    ({ error } = await sb.auth.signUp({ email, password }));
+  try {
+    if (authMode === 'login') {
+      ({ error } = await sb.auth.signInWithPassword({ email, password }));
+    } else {
+      ({ error } = await sb.auth.signUp({ email, password }));
+    }
+  } catch (e) {
+    error = { message: 'Unexpected error: ' + (e.message || e) };
   }
 
   btn.disabled = false;

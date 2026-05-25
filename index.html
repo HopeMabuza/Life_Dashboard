@@ -664,6 +664,7 @@ async function handleSignOut() {
 // ─── Data loading ────────────────────────────────────────────
 async function loadUserData(userId) {
   showLoading(true);
+  qs('#auth-overlay').classList.add('hidden');
   const [tRes, hRes, mRes, rRes, trRes] = await Promise.all([
     sb.from('tasks').select('*').eq('user_id', userId),
     sb.from('habits').select('*').eq('user_id', userId),
@@ -724,15 +725,21 @@ async function seedNewUser(userId) {
 
 // ─── Auth state listener ─────────────────────────────────────
 sb.auth.onAuthStateChange(async (event, session) => {
-  if (session && session.user) {
-    currentUser = session.user;
-    const initials = (session.user.email || '?')[0].toUpperCase();
-    qs('#user-avatar').textContent = initials;
-    await loadUserData(session.user.id);
-  } else {
-    currentUser = null;
+  try {
+    if (session && session.user) {
+      currentUser = session.user;
+      const initials = (session.user.email || '?')[0].toUpperCase();
+      qs('#user-avatar').textContent = initials;
+      await loadUserData(session.user.id);
+    } else {
+      currentUser = null;
+      showLoading(false);
+      qs('#auth-overlay').classList.remove('hidden');
+    }
+  } catch(e) {
     showLoading(false);
     qs('#auth-overlay').classList.remove('hidden');
+    showAuthError('Login error: ' + (e.message || JSON.stringify(e)));
   }
 });
 

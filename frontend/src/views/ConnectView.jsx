@@ -1,27 +1,43 @@
 import { useWeb3Modal } from '@web3modal/wagmi/react'
-import Button from '../components/ui/Button'
+import { useAuth } from '../hooks/useAuth.jsx'
 
 export default function ConnectView() {
   const { open } = useWeb3Modal()
+  const { loading } = useAuth()
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-6">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-white mb-2">Life Dashboard</h1>
-        <p className="text-gray-400 text-lg">Connect your wallet to get started</p>
-      </div>
+    <div className="min-h-screen bg-cream flex items-center justify-center p-6 overflow-hidden relative">
+      {/* Blobs */}
+      <div className="absolute -top-16 -left-16 w-56 h-56 rounded-[42%_58%_65%_35%/45%_40%_60%_55%] bg-green-400 animate-floatBlob" />
+      <div className="absolute -bottom-20 -right-10 w-72 h-72 rounded-[60%_40%_35%_65%/55%_60%_40%_45%] bg-blue-300 animate-floatBlobSlow" />
+      <div className="absolute top-5 right-16 w-24 h-24 rounded-full bg-ink" />
 
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 w-full max-w-sm text-center space-y-4">
-        <div className="text-5xl">🔐</div>
-        <p className="text-gray-400 text-sm">
-          Sign in securely using your crypto wallet. No email or password needed.
+      <div className="relative z-10 w-full max-w-[600px] bg-surface rounded-[32px] px-16 py-20 text-center shadow-[0_30px_60px_-20px_rgba(27,33,64,0.3)]">
+        {/* Logo */}
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#1B2140] mb-6">
+          <div className="w-5 h-5 rounded-md bg-green-400" />
+        </div>
+
+        <h1 className="font-display text-[34px] font-extrabold text-ink leading-tight mb-2">Tracker</h1>
+        <p className="text-muted text-base mb-9 leading-relaxed">
+          Weekly goals, plainly kept.<br />No dashboards, just done.
         </p>
-        <Button onClick={() => open()} className="w-full py-3 text-base">
-          Connect Wallet
-        </Button>
-        <p className="text-xs text-gray-600">
-          Supports MetaMask, Rainbow, Coinbase Wallet & more
-        </p>
+
+        {loading ? (
+          <div className="w-full py-4 rounded-2xl bg-green-100 text-ink text-sm font-bold flex items-center justify-center gap-3">
+            <div className="w-4 h-4 rounded-full border-[3px] border-green-500 border-t-transparent animate-spin" />
+            Sign message to verify…
+          </div>
+        ) : (
+          <button
+            onClick={() => open()}
+            className="w-full py-4 rounded-2xl bg-[#1B2140] text-white text-base font-extrabold hover:bg-[#272E52] transition-colors"
+          >
+            Connect Wallet
+          </button>
+        )}
+
+        <p className="mt-5 text-xs text-faint">No email, no password. Just your wallet.</p>
       </div>
     </div>
   )

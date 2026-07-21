@@ -23,3 +23,5 @@ Docs/
 Thumbs.db
 .vscode/settings.json
 *.log
+
+design_handoff_tracker

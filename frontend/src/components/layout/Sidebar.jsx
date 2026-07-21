@@ -3,10 +3,9 @@ import { useAuth } from '../../hooks/useAuth.jsx'
 import { useWeb3Modal } from '@web3modal/wagmi/react'
 
 const NAV = [
-  { to: '/',          label: 'Today',    icon: '☀️' },
-  { to: '/weekly',    label: 'Weekly',   icon: '📅' },
-  { to: '/monthly',   label: 'Monthly',  icon: '🗓️' },
-  { to: '/progress',  label: 'Progress', icon: '📈' },
+  { to: '/',         label: 'Tasks',    dot: 'bg-green-400' },
+  { to: '/reflect',  label: 'Reflect',  dot: 'bg-orange-400' },
+  { to: '/overview', label: 'Overview', dot: 'bg-blue-400' },
 ]
 
 export default function Sidebar() {
@@ -16,43 +15,49 @@ export default function Sidebar() {
   const short = address ? `${address.slice(0, 6)}…${address.slice(-4)}` : ''
 
   return (
-    <aside className="w-64 min-h-screen bg-gray-900 border-r border-gray-800 flex flex-col">
-      <div className="p-6 border-b border-gray-800">
-        <h1 className="text-xl font-bold text-brand-500">Life Dashboard</h1>
-        <p className="text-xs text-gray-500 mt-1">Your personal tracker</p>
+    <aside className="w-56 flex-shrink-0 bg-surface border-r border-line flex flex-col sticky top-0 h-screen">
+      {/* Branding */}
+      <div className="flex items-center gap-2.5 px-5 py-7">
+        <div className="w-8 h-8 rounded-[10px] bg-ink flex items-center justify-center flex-shrink-0">
+          <div className="w-3 h-3 rounded-sm bg-green-400" />
+        </div>
+        <span className="font-display font-extrabold text-lg text-ink">Tracker</span>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
-        {NAV.map(({ to, label, icon }) => (
+      {/* Nav */}
+      <nav className="flex flex-col gap-1 px-3">
+        {NAV.map(({ to, label, dot }) => (
           <NavLink
             key={to}
             to={to}
             end={to === '/'}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              `flex items-center gap-3 px-3.5 py-3 rounded-[14px] text-sm font-bold transition-colors ${
                 isActive
-                  ? 'bg-brand-500 text-white'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                  ? 'bg-cream text-ink'
+                  : 'text-muted hover:bg-cream/60 hover:text-ink'
               }`
             }
           >
-            <span>{icon}</span>
+            <span className={`w-2.5 h-2.5 rounded-sm flex-shrink-0 ${dot}`} />
             {label}
           </NavLink>
         ))}
       </nav>
 
-      <div className="p-4 border-t border-gray-800">
+      {/* Wallet */}
+      <div className="mt-auto flex flex-col gap-2.5 p-4">
         <button
           onClick={() => open()}
-          className="w-full text-left px-4 py-2 rounded-lg bg-gray-800 text-xs text-gray-300 hover:bg-gray-700 transition-colors font-mono truncate"
+          className="flex items-center gap-2.5 px-3 py-2.5 bg-cream rounded-[14px] w-full text-left"
         >
-          {short || 'Connect Wallet'}
+          <div className="w-7 h-7 rounded-full bg-blue-300 flex-shrink-0" />
+          <span className="text-xs font-bold text-ink truncate font-mono">{short || 'Connect'}</span>
         </button>
         {address && (
           <button
             onClick={signOut}
-            className="w-full mt-2 px-4 py-2 rounded-lg text-xs text-red-400 hover:bg-gray-800 transition-colors"
+            className="px-3 py-2 border border-line rounded-[14px] text-xs font-bold text-faint hover:text-ink hover:border-ink/20 transition-colors"
           >
             Disconnect
           </button>

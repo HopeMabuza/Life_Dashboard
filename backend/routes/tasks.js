@@ -16,9 +16,16 @@ router.get('/', async (req, res) => {
 })
 
 router.post('/', async (req, res) => {
-  const { title, area, priority } = req.body
+  const { title, description, day, area, priority } = req.body
   const task = await prisma.task.create({
-    data: { title, area, priority: priority ?? 'medium', userId: req.userId },
+    data: {
+      title,
+      description: description ?? null,
+      day:      day      ?? 'Anytime',
+      area:     area     ?? 'Work',
+      priority: priority ?? 'medium',
+      userId:   req.userId,
+    },
   })
   res.status(201).json(task)
 })

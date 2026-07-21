@@ -18,14 +18,16 @@ model User {
 }
 
 model Task {
-  id        String   @id @default(cuid())
-  title     String
-  area      String   // Health | Work | Growth | Finance | Relationships
-  priority  String   @default("medium") // low | medium | high
-  completed Boolean  @default(false)
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  day         String   @default("Anytime") // Mon | Tue | Wed | Thu | Fri | Sat | Sun | Anytime
+  area        String   @default("Work")    // Health | Work | Growth | Finance | Relationships
+  priority    String   @default("medium")  // low | medium | high
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
 }
 
 model Habit {

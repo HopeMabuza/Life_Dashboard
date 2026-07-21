@@ -63,7 +63,7 @@ export default function OverviewView() {
                       style={{ width: `${p}%` }}
                     />
                   </div>
-                  <span className="text-xs font-bold text-muted flex-shrink-0 w-16 text-right">
+                  <span className="text-xs font-bold text-muted flex-shrink-0 w-14 text-right">
                     {done}/{t} done
                   </span>
                 </div>

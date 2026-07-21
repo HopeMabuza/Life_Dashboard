@@ -112,7 +112,7 @@ export default function TasksHomeView() {
             <div
               key={task.id}
               className={clsx(
-                'flex items-start gap-3.5 px-4 py-3.5 bg-surface border border-line rounded-[16px] transition-opacity',
+                'flex items-start gap-3.5 px-4 py-3.5 bg-[#F9F6EE] border border-line rounded-[16px] shadow-sm transition-opacity',
                 task.completed && 'opacity-60'
               )}
             >
@@ -127,7 +127,7 @@ export default function TasksHomeView() {
                 {task.completed && <div className="w-2 h-2 rounded-sm bg-surface" />}
               </button>
 
-              {/* Text */}
+              {/* Text + badges */}
               <div className="flex-1 min-w-0">
                 <p className={clsx(
                   'text-sm font-semibold',
@@ -138,13 +138,13 @@ export default function TasksHomeView() {
                 {task.description && (
                   <p className="text-xs text-faint mt-1">{task.description}</p>
                 )}
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge label={task.priority} variant="priority" />
+                  <span className="text-xs font-bold text-muted bg-cream px-3 py-1 rounded-2xl whitespace-nowrap">
+                    {task.day}
+                  </span>
+                </div>
               </div>
-
-              <Badge label={task.priority} variant="priority" />
-
-              <span className="text-xs font-bold text-muted bg-cream px-3 py-1 rounded-2xl flex-shrink-0 whitespace-nowrap">
-                {task.day}
-              </span>
 
               <button
                 onClick={() => removeTask.mutate(task.id)}
@@ -164,7 +164,7 @@ export default function TasksHomeView() {
           onClick={() => setModalOpen(false)}
         >
           <div
-            className="w-full max-w-[560px] bg-surface/95 backdrop-blur border border-white/60 rounded-[24px] p-10 shadow-[0_30px_60px_-20px_rgba(27,33,64,0.35)]"
+            className="w-full max-w-[560px] bg-surface/95 backdrop-blur border border-white/60 rounded-[24px] p-5 md:p-10 shadow-[0_30px_60px_-20px_rgba(27,33,64,0.35)]"
             onClick={e => e.stopPropagation()}
           >
             <h3 className="font-display text-xl font-extrabold text-ink mb-5">New task</h3>

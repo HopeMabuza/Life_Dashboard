@@ -15,7 +15,7 @@ export default function Sidebar() {
   const short = address ? `${address.slice(0, 6)}…${address.slice(-4)}` : ''
 
   return (
-    <aside className="w-56 flex-shrink-0 bg-[#F9F6EE] border-r border-line flex flex-col sticky top-0 h-screen">
+    <aside className="w-80 flex-shrink-0 bg-[#F9F6EE] border-r border-line flex flex-col sticky top-0 h-screen">
       {/* Branding */}
       <div className="flex items-center gap-2.5 px-5 py-7">
         <div className="w-8 h-8 rounded-[10px] bg-ink flex items-center justify-center flex-shrink-0">
